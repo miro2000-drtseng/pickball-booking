@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>建立管理員帳號</title>
+<style>
+  body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; max-width: 420px; margin: 40px auto; padding: 0 20px; color: #1f2937; }
+  h1 { color: #0a6e4e; font-size: 20px; }
+  label { display: block; margin-top: 16px; font-size: 14px; font-weight: 600; }
+  input { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
+  button { margin-top: 24px; width: 100%; padding: 12px; background: #0a6e4e; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  button:disabled { background: #9ca3af; }
+  #result { margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 14px; display: none; }
+  .ok { background: #dcfce7; color: #166534; display: block !important; }
+  .err { background: #fee2e2; color: #991b1b; display: block !important; }
+  .hint { font-size: 12px; color: #6b7280; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <h1>建立第一個管理員帳號</h1>
+  <p style="font-size:14px;color:#6b7280">這個頁面只能用「一次」——建立成功後，第二次執行會顯示「管理員已存在」。建立完成後，請回到 Render 把 <code>ALLOW_ADMIN_INIT</code> 這個環境變數刪掉或改成 false。</p>
+
+  <label>管理員 Email</label>
+  <input id="email" type="email" placeholder="你要用來登入後台的 email">
+
+  <label>管理員密碼</label>
+  <input id="password" type="password" placeholder="設定一組密碼">
+
+  <label>管理員名稱（選填）</label>
+  <input id="name" type="text" placeholder="例如：館長">
+
+  <label>JWT_SECRET</label>
+  <input id="secret" type="text" placeholder="去 Render → Environment 複製 JWT_SECRET 的值貼這裡">
+  <div class="hint">這組值是拿來驗證「你有權限做這件事」，不是你要記的密碼，貼上後這個頁面不會另外儲存它。</div>
+
+  <button id="submitBtn" onclick="doInit()">建立管理員帳號</button>
+  <div id="result"></div>
+
+<script>
+async function doInit() {
+  const btn = document.getElementById('submitBtn');
+  const result = document.getElementById('result');
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const name = document.getElementById('name').value.trim();
+  const secret = document.getElementById('secret').value.trim();
+
+  if (!email || !password || !secret) {
+    result.className = 'err';
+    result.textContent = '請把 Email、密碼、JWT_SECRET 都填好';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '處理中...';
+
+  try {
+    const res = await fetch('/api/auth/admin/init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name, secret })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      result.className = 'ok';
+      result.textContent = '✅ 建立成功！現在可以用這個 Email 和密碼登入後台了。記得回 Render 把 ALLOW_ADMIN_INIT 刪掉。';
+    } else {
+      result.className = 'err';
+      result.textContent = '❌ ' + (data.error || '建立失敗');
+    }
+  } catch (e) {
+    result.className = 'err';
+    result.textContent = '❌ 連線失敗：' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '建立管理員帳號';
+  }
+}
+</script>
+</body>
+</html>
